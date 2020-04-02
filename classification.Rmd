@@ -1,0 +1,145 @@
+---
+title: "bbdc"
+author: "Atit_Bashyal"
+date: "3/17/2019"
+output: html_document
+---
+
+```{r}
+
+#Decision Trees
+library(rpart)
+library(caret) 
+
+
+#Single Decision Tree model
+
+df= training_data
+df['activity_label'==23] <- NA
+df = na.omit(df)
+
+summary(df$activity_label)
+test_data= test
+tree_classifier = rpart(df$activity_label ~ ., data = df,method="class")
+summary(tree_classifier)
+plot(tree_classifier)
+text(tree_classifier ,pretty=0)
+train_pred = predict(tree_classifier,df,type="class")
+test_pred = predict(tree_classifier,test_data,type="class")
+
+
+#missclassification training
+xtab=table(train_pred,df$activity_label)
+confusionMatrix(xtab,mode="everything")
+
+#pruning
+pfit= prune(tree_classifier, cp=tree_classifier$cptable[which.min(tree_classifier$cptable[,"xerror"]),"CP"])
+plot(pfit)
+text(pfit ,pretty=0)
+test_pred_prune = predict(pfit,test_data,type="class")
+test_pred_prune
+test_data$prediction_prune = test_pred_prune
+
+#exporting dataframe to csv
+write.table(test_data, "my_data_pred.csv", sep=",")
+```
+
+```{r}
+
+#Random Forest
+
+library(randomForest)
+library(MASS)
+library(caret)
+
+dfn=training_data
+df_test = test
+
+# Make dependent variable as a factor (categorical)
+dfn$activity_label= as.factor(dfn$activity_label)
+set.seed(100)
+randomforest_c = randomForest(dfn$activity_label~.,data=dfn,mtry=11,ntree=150,importance=TRUE)
+oob = randomforest_c$err.rate
+randomforest_c$err.rate
+plot(seq(1,200),oob[1:200,1],type = "l",xlab='Number of trees',ylab='OOB Error')
+points(150,	0.02140291,type="o",col='red')
+
+
+####find best mtry with CV
+
+rf.cv = randomForest.crossvalidation(randomforest_c,cv.fold=5) 
+
+cv.err<-double(5)
+
+#mtry is no of Variables randomly chosen at each split
+for(mtry in 10:15) 
+{
+  rf=randomForest(dfn$activity_label~.,data=dfn,mtry=mtry,ntree=200,importance=TRUE)
+  oob.err[mtry] = rf$err.rate[200,1]
+  cat(mtry," ")
+}
+
+cv.err[10:15]
+matplot(10:15 , cv.err[10:15], pch=19 , col="red",type="b",ylab="CV error",xlab="Number of Predictors Considered at each Split")
+
+  
+
+
+#predict
+test_prediction_rf_n = predict(randomforest_c,df_test,type="class")
+
+
+df_test$Label = test_prediction_rf_n 
+
+write.table(df_test, "my_data_rf.csv", sep=",")
+```
+```{r}
+
+#random Forest with interquartile range
+
+dfnn=training_data_iq
+df_testn=test_iq
+
+# Make dependent variable as a factor (categorical)
+dfnn$activity_label= as.factor(dfnn$activity_label)
+set.seed(101)
+randomforest_c_iq = randomForest(dfnn$activity_label~.,data=dfnn,mtry=11,ntree=200,importance=TRUE)
+randomforest_c_iq
+test_prediction_rf_n_iq = predict(randomforest_c_iq,df_testn,type="class")
+
+df_testn$Label = test_prediction_rf_n_iq
+
+write.table(df_testn, "my_data_rf_iq.csv", sep=",")
+```
+```{r}
+#random Forest with interquartile range and coorelations
+
+dfnnn=training_iq_coor
+df_testnn=test_iq_coor
+
+# Make dependent variable as a factor (categorical)
+dfnnn$activity_label= as.factor(dfnnn$activity_label)
+set.seed(102)
+randomforest_c_c = randomForest(dfnnn$activity_label~.,data=dfnnn,mtry=10,ntree=320,importance=TRUE)
+randomforest_c_c
+test_prediction_rf_n_c = predict(randomforest_c_c,df_testnn,type="class")
+
+df_testnn$Label = test_prediction_rf_n_c
+
+write.table(df_testnn, "my_data_last.csv", sep=",")
+
+
+
+
+```
+
+
+
+```{r}
+#svm
+
+
+
+
+
+```
